@@ -1,4 +1,4 @@
-export const DB_NAME= "hur1";
+export const DB_NAME= "lol123";
 
 
 
