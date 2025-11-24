@@ -23,4 +23,4 @@ const uploadImage = async (filePath) => {
     }
 };
 
-export { uploadImage };
+export {uploadImage};
