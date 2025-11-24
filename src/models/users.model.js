@@ -29,7 +29,7 @@ const userSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Video'
         }],
-    coverimage: {
+    coverImage: {
         type: String,
         default: ''
     },
@@ -37,7 +37,7 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    fullname: {
+    fullName: {
         type: String,
         required: true,
         trim: true,
@@ -53,7 +53,7 @@ userSchema.pre('save', async function(next) {
     next();
 });
 
-userSchema.methods.ispasswordMatch = async function(candidatePassword) {
+userSchema.methods.isPasswordMatch = async function(candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);
 };
 
@@ -62,7 +62,7 @@ userSchema.methods.generateAccessToken = function() {
         { userId: this._id,
           email: this.email,
           username: this.username,
-          fullname: this.fullname
+          fullName: this.fullName
 
         },
         process.env.access_token_secret,
@@ -76,7 +76,7 @@ userSchema.methods.generateRefreshToken = function() {
         { userId: this._id,
           email: this.email,
           username: this.username,
-          fullname: this.fullname
+          fullName: this.fullName
 
         },
         process.env.refresh_token_secret,
