@@ -16,7 +16,7 @@ const registerUser = asyncHandler(async (req, res) => {
     // check for user creation
     // return res
     const { username, fullName, email, password } = req.body
-    console.log("email:", email);
+    //console.log("email:", email);
 
     if ([username, fullName, email, password].some(field => !field || field.trim() === '')) {
         throw new ApiError(400, 'All fields are required');
@@ -28,7 +28,12 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     const avatarlocation = req.files?.avatar[0]?.path;
-    const coverImagelocation = req.files?.coverImage[0]?.path;
+    //const coverImagelocation = req.files?.coverImage[0]?.path; (error comes for undefined )
+
+    let coverImagelocation;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+        coverImagelocation = req.files.coverImage[0].path;
+    }
     if (!avatarlocation) {
         throw new ApiError(400, 'Avatar image is required');
     }
