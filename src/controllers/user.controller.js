@@ -62,7 +62,62 @@ const registerUser = asyncHandler(async (req, res) => {
 
 });
 
+const RefreshtokenandAccessToken = async (userId) => {
+    try {
+        const user = await User.findById(userId);
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+        user.refreshToken = refreshToken; //save refresh token in db
+        await user.save({ validateBeforeSave: false }); // save without password validation
+        return { accessToken, refreshToken };
 
 
+    } catch (error) {
+        throw new ApiError(500, 'Error generating tokens');
+        
+    }
+};
 
-export default registerUser;
+const loginUser = asyncHandler(async (req, res) => {
+    //get data from frontend 
+    //username or email
+    //find the user
+    //check password
+    //generate refresh token and access token
+    //send cookie
+
+    const { username, email, password} = req.body;
+
+    if (!username || !email || !password) {
+        throw new ApiError(400, 'Username, email or password are required');
+    }
+
+    const user= await User.findOne({ $or: [{email}, {username}]});
+    if (!user) {
+        throw new ApiError(404, 'User not found');
+    }
+
+    const isPasswordvalid = await user.isPasswordMatch(password);
+    if (!isPasswordvalid) {
+        throw new ApiError(401, 'Invalid user credentials!!');
+
+    }
+
+    const { accessToken, refreshToken } = await RefreshtokenandAccessToken(user._id);
+
+    const loggedInUser = await User.findById(user._id).select('-password -refreshToken');
+
+    const options = {
+        httpOnly: true,
+        secure: true
+    };
+
+    res.status(200)
+       .cookie('refreshToken', refreshToken, options)
+       .cookie('accessToken', accessToken, options)
+       .json(new ApiResponse(200, 'User logged in successfully', { loggedInUser, accessToken, refreshToken }));
+
+}
+);
+
+export default { registerUser, loginUser };
