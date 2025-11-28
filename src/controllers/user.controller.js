@@ -1,6 +1,6 @@
 import asyncHandler from '../utils/asyncHandler.js';
 import ApiError from '../utils/ApiError.js';
-
+import jwt from 'jsonwebtoken';
 import ApiResponse from '../utils/ApiResponse.js';
 import { User } from '../models/users.model.js';
 import {uploadImage} from '../utils/cloudinary.js';
@@ -136,4 +136,42 @@ const logoutUser = asyncHandler(async (req, res) => {
 });
 
 
-export { registerUser, loginUser, logoutUser };
+//ENDPOINT HITTING FOR GENEREATING ACCESS TOKEN USING REFRESH TOKEN AFTER IT EXPIRED (route: prep)
+const refreshAccessToken = asyncHandler(async (req, res) => {
+    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken;
+
+    if (!incomingRefreshToken) {
+        throw new ApiError(401, 'Refresh token is missing');
+    }
+
+    try {
+        const decodedtoken= jwt.verify(incomingRefreshToken, process.env.refresh_token_secret)
+        const user = await User.findById(decodedtoken._id);
+        if (!user) {
+            throw new ApiError(404, 'User not found');
+        }
+    
+        if (user?.refreshToken !== incomingRefreshToken) {
+            throw new ApiError(401, 'Invalid refresh token');
+        }
+        const options = {
+            httpOnly: true,
+            secure: true
+        };
+    
+        const { accessToken, newRefreshToken } = await RefreshtokenandAccessToken(user._id);
+    
+        res.status(200)
+           .cookie('refreshToken', newRefreshToken, options)
+           .cookie('accessToken', accessToken, options)
+           .json(new ApiResponse(200, 'Access token refreshed successfully', { accessToken, refreshtoken: newRefreshToken }));
+    
+    } catch (error) {
+       // console.error("Error refreshing access token:", error);
+        throw new ApiError(500, 'Error refreshing access token');
+    }
+});
+
+
+
+export { registerUser, loginUser, logoutUser, refreshAccessToken };
