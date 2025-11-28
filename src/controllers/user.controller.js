@@ -63,6 +63,7 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 const RefreshtokenandAccessToken = async (userId) => {
+    console.log("FUNCTION CALLED WITH:", userId);
     try {
         const user = await User.findById(userId);
         const accessToken = user.generateAccessToken();
@@ -73,6 +74,7 @@ const RefreshtokenandAccessToken = async (userId) => {
 
 
     } catch (error) {
+        console.error("Error generating tokens:", error);
         throw new ApiError(500, 'Error generating tokens');
         
     }
@@ -88,8 +90,8 @@ const loginUser = asyncHandler(async (req, res) => {
 
     const { username, email, password} = req.body;
 
-    if (!username || !email || !password) {
-        throw new ApiError(400, 'Username, email or password are required');
+    if (!username && !email) {
+        throw new ApiError(400, 'Username or email is required to login');
     }
 
     const user= await User.findOne({ $or: [{email}, {username}]});
