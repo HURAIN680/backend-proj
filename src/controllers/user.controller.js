@@ -63,7 +63,7 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 const RefreshtokenandAccessToken = async (userId) => {
-    console.log("FUNCTION CALLED WITH:", userId);
+   
     try {
         const user = await User.findById(userId);
         const accessToken = user.generateAccessToken();
@@ -74,7 +74,7 @@ const RefreshtokenandAccessToken = async (userId) => {
 
 
     } catch (error) {
-        console.error("Error generating tokens:", error);
+       // console.error("Error generating tokens:", error);
         throw new ApiError(500, 'Error generating tokens');
         
     }
@@ -129,8 +129,8 @@ const logoutUser = asyncHandler(async (req, res) => {
         secure: true
     };
     return res.status(200)
-        .clearcookie('refreshToken', options)
-        .clearcookie('accessToken', options)
+        .clearCookie('refreshToken', options)
+        .clearCookie('accessToken', options)
         .json(new ApiResponse(200, 'User logged out successfully'));
 
 });
