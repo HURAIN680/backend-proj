@@ -173,7 +173,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 });
 
 
-const chnagePassword = asyncHandler(async (req, res) => {
+const changePassword = asyncHandler(async (req, res) => {
     // get old password and new password from req body
     // validate both are present
     // find user from req.user._id
@@ -205,11 +205,71 @@ const chnagePassword = asyncHandler(async (req, res) => {
    return res.status(200).json(new ApiResponse(200, 'Password changed successfully'));
  });
 
- 
+const getCurrentUser = asyncHandler(async (req, res) => {
+    return res.status(200).json(new ApiResponse(200, 'Current user fetched successfully', req.user));
+
+});
+
+const updateUserProfile = asyncHandler(async (req, res) => {
+    // get user details from req body
+    // find user from req.user._id
+    // update user fields
+    // save user
+    // return res
+
+    const { fullName, email } = req.body;
+
+    if (!fullName || !email) {
+        throw new ApiError(400, 'Full name and email are required');
+    }
+
+    const user = await User.findByIdAndUpdate(req.user?._id, { 
+        $set: { fullName, email } }, { new: true }).select('-password -refreshToken');
+
+    if (!user) {
+        throw new ApiError(404, 'User not found');
+    }
+
+    return res.status(200).json(new ApiResponse(200, 'User profile updated successfully', user));
+});
+
+const updateAvatar = asyncHandler(async (req, res) => {
+   const avatarPath = req.file?.path; // using file and not files for single upload (checkout router fields)
+    if (!avatarPath) {
+        throw new ApiError(400, 'Avatar image is required');
+
+    }
+
+    const avatarUploadResult = await uploadImage(avatarPath);
+    if (!avatarUploadResult.url) {
+        throw new ApiError(500, 'Error uploading avatar image');
+    }
+
+    const user= await User.findByIdAndUpdate(req.user._id, { $set: { avatar: avatarUploadResult.url } }, { new: true }).select('-password -refreshToken');
+
+    return res.status(200).json(new ApiResponse(200, 'Avatar updated successfully', { avatar: user.avatar }));
+});
 
 
-    
+
+const updateCoverImage = asyncHandler(async (req, res) => {
+   const coverImagePath = req.file?.path; // using file and not files for single upload (checkout router fields)
+    if (!coverImagePath) {
+        throw new ApiError(400, 'Cover image is required');
+
+    }
+
+    const coverImageUploadResult = await uploadImage(coverImagePath);
+    if (!coverImageUploadResult.url) {
+        throw new ApiError(500, 'Error uploading cover image');
+    }
+
+    const user= await User.findByIdAndUpdate(req.user._id, { $set: { coverImage: coverImageUploadResult.url } }, { new: true }).select('-password -refreshToken');
+
+    return res.status(200).json(new ApiResponse(200, 'Cover image updated successfully', { coverImage: user.coverImage }));
+});
 
 
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+
+export { registerUser, loginUser, logoutUser, refreshAccessToken, changePassword, getCurrentUser, updateUserProfile, updateAvatar, updateCoverImage };
