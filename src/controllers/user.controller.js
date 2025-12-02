@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import ApiResponse from '../utils/ApiResponse.js';
 import { User } from '../models/users.model.js';
 import {uploadImage} from '../utils/cloudinary.js';
+import mongoose from 'mongoose';
 
 const registerUser = asyncHandler(async (req, res) => {
     // get user details from frontend
@@ -356,8 +357,40 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         return res.status(200).json(new ApiResponse(200, 'Channel profile fetched successfully', channel[0]));
     });
 
+const getWatchHistory = asyncHandler(async (req, res) => {
+    const user = await User.aggregate([
+        { $match: { _id: new mongoose.Types.ObjectId(req.user._id) } },
+        // nested pipelines
+        {
+            $lookup: {
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchedVideos",
+                pipeline: [
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner",
+                            pipeline: [{ $project: { username: 1, fullName: 1, avatar: 1 } }]
+                        }
+                    },
+                    // optional pipeline for sorting the data to send on front end (since we get it in array format therefore to extract using 0th index becomes messy)
+                    {
+                        $addFields: {
+                            owner: { $first: "$owner" }
+                        }
+                    }
+                ]
+            }
+        }
+    ]);
+
+    return res.status(200).json(new ApiResponse(200, 'Watch history fetched successfully', user[0]?.watchedVideos || []));
+
+});
 
 
-
-
-export { registerUser, loginUser, logoutUser, refreshAccessToken, changePassword, getCurrentUser, updateUserProfile, updateAvatar, updateCoverImage, getUserChannelProfile };
+export { registerUser, loginUser, logoutUser, refreshAccessToken, changePassword, getCurrentUser, updateUserProfile, updateAvatar, updateCoverImage, getUserChannelProfile, getWatchHistory };
