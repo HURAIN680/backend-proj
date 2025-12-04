@@ -6,6 +6,7 @@ import { User } from '../models/users.model.js';
 import {uploadImage} from '../utils/cloudinary.js';
 import mongoose from 'mongoose';
 
+
 const registerUser = asyncHandler(async (req, res) => {
     // get user details from frontend
     // validation - not empty
@@ -220,8 +221,8 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 
     const { fullName, email } = req.body;
 
-    if (!fullName || !email) {
-        throw new ApiError(400, 'Full name and email are required');
+    if (!fullName && !email) {
+        throw new ApiError(400, 'At least one of full name or email is required');
     }
 
     const user = await User.findByIdAndUpdate(req.user?._id, { 
@@ -237,34 +238,29 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 const updateAvatar = asyncHandler(async (req, res) => {
     const avatarPath = req.file?.path;
     if (!avatarPath) {
-        throw new ApiError(400, 'Avatar image is required');
+        throw new ApiError(400, "Avatar image is required");
     }
 
-    // STEP 1: Get user and store old avatar URL before updating
-    const existingUser = await User.findById(req.user._id).select('avatar');
-    const oldAvatarUrl = existingUser?.avatar;
+    // Step 1: Ensure user exists
+    const user = await User.findById(req.user._id).select("-password -refreshToken");
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
 
-    // STEP 2: Upload new avatar
+    // Step 2: Upload new avatar
     const avatarUploadResult = await uploadImage(avatarPath);
     if (!avatarUploadResult.url) {
-        throw new ApiError(500, 'Error uploading avatar image');
+        throw new ApiError(500, "Error uploading avatar image");
     }
 
-    // STEP 3: Update user with new URL
-    const user = await User.findByIdAndUpdate(
-        req.user._id,
-        { $set: { avatar: avatarUploadResult.url } },
-        { new: true }
-    ).select('-password -refreshToken');
-
-    // STEP 4: Delete previous image from Cloudinary
-    if (oldAvatarUrl) {
-        const publicId = extractPublicId(oldAvatarUrl);
-        await deleteImage(publicId);
-    }
+    // Step 3: Update user with new avatar
+    user.avatar = avatarUploadResult.url;
+    await user.save({ validateBeforeSave: false });
 
     return res.status(200).json(
-        new ApiResponse(200, 'Avatar updated successfully', { avatar: user.avatar })
+        new ApiResponse(200, "Avatar updated successfully", {
+            avatar: user.avatar
+        })
     );
 });
 
@@ -272,36 +268,32 @@ const updateAvatar = asyncHandler(async (req, res) => {
 const updateCoverImage = asyncHandler(async (req, res) => {
     const coverImagePath = req.file?.path;
     if (!coverImagePath) {
-        throw new ApiError(400, 'Cover image is required');
+        throw new ApiError(400, "Cover image is required");
     }
 
-    // STEP 1: Get the existing user to store old cover image before update
-    const existingUser = await User.findById(req.user._id).select('coverImage');
-    const oldCoverImageUrl = existingUser?.coverImage;
+    // Step 1: Ensure user exists
+    const user = await User.findById(req.user._id).select("-password -refreshToken");
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
 
-    // STEP 2: Upload new image
+    // Step 2: Upload new cover image
     const coverImageUploadResult = await uploadImage(coverImagePath);
     if (!coverImageUploadResult.url) {
-        throw new ApiError(500, 'Error uploading cover image');
+        throw new ApiError(500, "Error uploading cover image");
     }
 
-    // STEP 3: Update user record with new image URL
-    const user = await User.findByIdAndUpdate(
-        req.user._id,
-        { $set: { coverImage: coverImageUploadResult.url } },
-        { new: true }
-    ).select('-password -refreshToken');
-
-    // STEP 4: Delete old Cloudinary image (if exists)
-    if (oldCoverImageUrl) {
-        const publicId = extractPublicId(oldCoverImageUrl);
-        await deleteImage(publicId); // Assumes deleteImage(publicId) works with Cloudinary
-    }
+    // Step 3: Update user with new cover image URL
+    user.coverImage = coverImageUploadResult.url;
+    await user.save({ validateBeforeSave: false });
 
     return res.status(200).json(
-        new ApiResponse(200, 'Cover image updated successfully', { coverImage: user.coverImage })
+        new ApiResponse(200, "Cover image updated successfully", {
+            coverImage: user.coverImage,
+        })
     );
 });
+
 
 
 // aggregation pipeline to get user channel profile
