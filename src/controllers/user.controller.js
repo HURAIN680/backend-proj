@@ -140,39 +140,56 @@ const logoutUser = asyncHandler(async (req, res) => {
 
 //ENDPOINT HITTING FOR GENEREATING ACCESS TOKEN USING REFRESH TOKEN AFTER IT EXPIRED (route: prep)
 const refreshAccessToken = asyncHandler(async (req, res) => {
-    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken;
+    // Accept token from cookie or body
+    const incomingRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
 
     if (!incomingRefreshToken) {
         throw new ApiError(401, 'Refresh token is missing');
     }
 
     try {
-        const decodedtoken= jwt.verify(incomingRefreshToken, process.env.refresh_token_secret)
-        const user = await User.findById(decodedtoken._id);
-        if (!user) {
-            throw new ApiError(404, 'User not found');
-        }
-    
-        if (user?.refreshToken !== incomingRefreshToken) {
+        // Verify the refresh token
+        const decodedToken = jwt.verify(incomingRefreshToken, process.env.refresh_token_secret);
+
+        // Find user
+        const user = await User.findById(decodedToken._id);
+        if (!user) throw new ApiError(404, 'User not found');
+
+        // Check token matches database
+        if (user.refreshToken !== incomingRefreshToken) {
             throw new ApiError(401, 'Invalid refresh token');
         }
+
+        // Generate new tokens
+        const { accessToken, newRefreshToken } = await RefreshtokenandAccessToken(user._id);
+
+        if (!accessToken || !newRefreshToken) {
+            throw new ApiError(500, "Failed to generate tokens");
+        }
+
+        // Cookie options (works on localhost)
         const options = {
             httpOnly: true,
-            secure: true
+            secure: process.env.NODE_ENV === "production", // secure true only on HTTPS
+            sameSite: "lax"
         };
-    
-        const { accessToken, newRefreshToken } = await RefreshtokenandAccessToken(user._id);
-    
+
+        // Send tokens in cookie and JSON response
         res.status(200)
            .cookie('refreshToken', newRefreshToken, options)
            .cookie('accessToken', accessToken, options)
-           .json(new ApiResponse(200, 'Access token refreshed successfully', { accessToken, refreshtoken: newRefreshToken }));
-    
+           .json(new ApiResponse(200, 'Access token refreshed successfully', {
+                accessToken,
+                refreshToken: newRefreshToken
+           }));
+
     } catch (error) {
-        //console.error("Error refreshing access token:", error);
+        console.error("Error refreshing access token:", error);
+        if (error instanceof ApiError) throw error; // preserves 401/404
         throw new ApiError(500, 'Error refreshing access token');
     }
 });
+
 
 
 const changePassword = asyncHandler(async (req, res) => {
